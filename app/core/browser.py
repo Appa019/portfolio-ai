@@ -41,17 +41,24 @@ class ClaudeSession:
     async def initialize(self) -> None:
         """Launch browser and load storage state if available."""
         self._playwright = await async_playwright().start()
-        self._browser = await self._playwright.chromium.launch(
-            headless=settings.playwright_headless,
-        )
+
+        # Use real Chrome (not Playwright's Chromium) to bypass Turnstile bot detection.
+        # channel="chrome" uses the system-installed Google Chrome.
+        launch_options: dict = {
+            "headless": settings.playwright_headless,
+            "channel": "chrome",
+            "args": [
+                "--disable-blink-features=AutomationControlled",
+                "--no-first-run",
+                "--no-default-browser-check",
+            ],
+        }
+
+        self._browser = await self._playwright.chromium.launch(**launch_options)
 
         storage_path = Path(settings.playwright_storage_path)
         context_options: dict = {
-            "viewport": {"width": 1280, "height": 900},
-            "user_agent": (
-                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            ),
+            "viewport": {"width": 1366, "height": 768},
         }
 
         if storage_path.exists():
@@ -62,8 +69,18 @@ class ClaudeSession:
                 logger.warning("failed_to_load_storage_state")
 
         self._context = await self._browser.new_context(**context_options)
+
+        # Remove webdriver flag that Cloudflare Turnstile checks
+        await self._context.add_init_script(
+            "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+        )
+
         self._page = await self._context.new_page()
-        logger.info("browser_initialized", headless=settings.playwright_headless)
+        logger.info(
+            "browser_initialized",
+            headless=settings.playwright_headless,
+            channel="chrome",
+        )
 
     async def ensure_logged_in(self) -> bool:
         """Navigate to claude.ai and verify we're authenticated."""
