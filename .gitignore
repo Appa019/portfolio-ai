@@ -1,0 +1,55 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+.next/
+out/
+
+# Supabase
+.supabase/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/settings.local.json
+
+# Logs
+*.log
+logs/
+
+# Database (local dev)
+*.db
+*.db-journal
+*.db-wal
+
+# Build artifacts
+coverage/
+.vercel/
+
+# Secrets
+secrets/
+*.pem
+*.key
+
+# Playwright storage state
+storage/claude_session.json

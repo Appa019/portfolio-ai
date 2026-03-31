@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+:root {
+  /* Editorial financial palette — warm neutrals + teal accent */
+  --bg-primary: oklch(0.98 0.005 80);
+  --bg-secondary: oklch(0.95 0.008 80);
+  --bg-card: oklch(0.99 0.003 80);
+  --text-primary: oklch(0.18 0.02 80);
+  --text-secondary: oklch(0.45 0.015 80);
+  --text-muted: oklch(0.62 0.01 80);
+  --accent: oklch(0.55 0.12 195);
+  --accent-light: oklch(0.92 0.04 195);
+  --border: oklch(0.90 0.008 80);
+  --border-strong: oklch(0.82 0.012 80);
+  --success: oklch(0.62 0.15 145);
+  --danger: oklch(0.55 0.18 25);
+  --danger-light: oklch(0.95 0.05 25);
+  --warning: oklch(0.72 0.15 75);
+}
+
+@theme inline {
+  --color-background: var(--bg-primary);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-body);
+  --font-serif: var(--font-heading);
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus-visible styles for keyboard accessibility (WCAG 2.4.7) */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}

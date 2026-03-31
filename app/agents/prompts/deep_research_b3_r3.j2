@@ -1,0 +1,58 @@
+[ROUND 3/3 — Devil's Advocate]
+
+AGORA MUDE COMPLETAMENTE DE PERSPECTIVA.
+
+Para os seus **top 3 picks** do round anterior, assuma o papel de um BEAR CASE analyst. Seu objetivo é DESTRUIR cada tese de investimento.
+
+Para cada um dos top 3:
+
+### 1. Por que NÃO comprar?
+- Qual o pior cenário realista em 31-90 dias?
+- O que o mercado pode estar precificando que você não viu?
+- Existe risco de revisão de lucros para baixo?
+
+### 2. Tese Contrária
+- Se um analista experiente fosse short nesse ativo, qual seria a tese dele?
+- Quais dados suportariam o bear case?
+
+### 3. Riscos Ocultos
+- Riscos que não aparecem nos fundamentos (governança, regulatório, reputacional)
+- Concentração de receita/clientes perigosa
+- Insider selling ou mudança de management
+
+### 4. Stress Test
+- Se Selic subir 1pp nos próximos 3 meses, o que acontece?
+- Se o dólar for a R$ {{ stress_usd | default('6.50') }}, qual o impacto?
+- Se o setor entrar em recessão, qual a resiliência?
+
+### 5. Veredicto Final Ajustado
+Depois de toda essa análise adversarial, RECLASSIFIQUE os 3 ativos:
+- Mantém a recomendação original?
+- Score final ajustado ao risco
+
+## FORMATO DE SAÍDA OBRIGATÓRIO (JSON)
+```json
+{
+  "devils_advocate": [
+    {
+      "ticker": "",
+      "bear_case": "",
+      "tese_contraria": "",
+      "riscos_ocultos": [],
+      "stress_test": {
+        "selic_mais_1": "",
+        "dolar_stress": "",
+        "recessao_setorial": ""
+      },
+      "score_pre_adversarial": 0,
+      "score_pos_adversarial": 0,
+      "manteve_recomendacao": true,
+      "recomendacao_final": "",
+      "confianca_final": ""
+    }
+  ],
+  "ranking_final_ajustado": []
+}
+```
+
+Responda APENAS com o JSON. Seja brutalmente honesto.

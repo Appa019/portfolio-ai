@@ -1,0 +1,63 @@
+[ROUND 3/3 — Devil's Advocate]
+
+AGORA MUDE COMPLETAMENTE DE PERSPECTIVA.
+
+Para os seus **top 3 picks** do round anterior, assuma o papel de um BEAR CASE analyst. Seu objetivo é DESTRUIR cada tese de investimento.
+
+Para cada um dos top 3:
+
+### 1. Por que NÃO comprar?
+- O protocolo é sustentável sem incentivos/farming?
+- A narrativa já precificou? Late to the party?
+- Existem alternativas melhores no mesmo segmento?
+
+### 2. Riscos Técnicos
+- Smart contract risk: auditorias, bugs anteriores, complexidade
+- Centralização: admin keys, multisig setup, upgrade mechanisms
+- Dependência de oracles ou bridges
+
+### 3. Riscos de Mercado
+- Se BTC cair 30%, quanto esse ativo cai? (beta)
+- Correlação com altcoins de mesma narrativa
+- Liquidez real: slippage em exit de USD 50K+
+- Risco regulatório específico (securities classification)
+
+### 4. Token Unlock Stress
+- Se próximo unlock ocorrer, qual o impacto estimado no preço?
+- Histórico de comportamento pós-unlock
+- Vesting cliff dates nos próximos 90 dias
+
+### 5. Veredicto Final Ajustado
+Depois de toda essa análise adversarial, RECLASSIFIQUE os 3 ativos:
+- Mantém a recomendação original?
+- Score final ajustado ao risco
+
+## FORMATO DE SAÍDA OBRIGATÓRIO (JSON)
+```json
+{
+  "devils_advocate": [
+    {
+      "ticker": "",
+      "bear_case": "",
+      "riscos_tecnicos": [],
+      "riscos_mercado": {
+        "beta_btc": "",
+        "liquidez_real": "",
+        "regulatorio": ""
+      },
+      "unlock_stress": {
+        "proximo_unlock_impacto": "",
+        "historico_pos_unlock": ""
+      },
+      "score_pre_adversarial": 0,
+      "score_pos_adversarial": 0,
+      "manteve_recomendacao": true,
+      "recomendacao_final": "",
+      "confianca_final": ""
+    }
+  ],
+  "ranking_final_ajustado": []
+}
+```
+
+Responda APENAS com o JSON. Seja brutalmente honesto.

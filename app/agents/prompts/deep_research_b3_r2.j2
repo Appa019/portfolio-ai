@@ -1,0 +1,61 @@
+[ROUND 2/3 — Deep Dive nos Top 5]
+
+Agora aprofunde a análise nos **5 melhores candidatos** do round anterior.
+
+Para cada um dos top 5:
+
+### 1. Valuation Detalhado
+- DCF simplificado: crescimento esperado de receita 3 anos, margem terminal, WACC estimado
+- Múltiplos vs pares do setor (P/L, EV/EBITDA, P/VP)
+- Está caro ou barato vs histórico de 5 anos?
+
+### 2. Análise Técnica Avançada
+- Volume profile: acumulação ou distribuição?
+- Fibonacci retracement levels
+- Padrão gráfico atual (canal, triângulo, bandeira, etc.)
+- Setup de entrada: preço ideal, stop loss, alvo
+
+### 3. Moat e Posição Competitiva
+- Barreira de entrada do setor
+- Market share e tendência
+- Pricing power
+- Dependência de regulação/governo
+
+### 4. Catalisadores Próximos (31-90 dias)
+- Datas de resultados trimestrais
+- Dividendos/JCP previstos
+- Eventos setoriais (leilões, regulação, safra)
+
+## FORMATO DE SAÍDA OBRIGATÓRIO (JSON)
+```json
+{
+  "deep_dive": [
+    {
+      "ticker": "",
+      "ranking": 0,
+      "valuation": {
+        "dcf_upside": "",
+        "multiplos_vs_pares": "",
+        "vs_historico": ""
+      },
+      "tecnica_avancada": {
+        "volume_profile": "",
+        "fibonacci_levels": {},
+        "padrao_grafico": "",
+        "setup_entrada": {"preco_ideal": "", "stop_loss": "", "alvo": ""}
+      },
+      "moat": {
+        "barreira_entrada": "",
+        "market_share": "",
+        "pricing_power": ""
+      },
+      "catalisadores": [],
+      "score_final": 0,
+      "recomendacao": "",
+      "confianca": ""
+    }
+  ]
+}
+```
+
+Responda APENAS com o JSON.
