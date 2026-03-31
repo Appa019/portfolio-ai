@@ -9,6 +9,14 @@ TUNNEL_LOG="/tmp/cloudflared_portfolioai.log"
 
 cd "$PROJECT_DIR"
 
+# Check required tools
+for cmd in cloudflared vercel; do
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "  ERROR: $cmd not found. Install it first."
+        exit 1
+    fi
+done
+
 echo ""
 echo "  ╔══════════════════════════════════════╗"
 echo "  ║     PortfolioAI — Ultra Research     ║"

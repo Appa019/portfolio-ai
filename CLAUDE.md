@@ -33,9 +33,9 @@ Gestão de investimentos pessoais — full-stack localhost.
 - Always use Context7 MCP for library documentation before generating code
 
 ## Notifications
-- Gmail SMTP (smtp.gmail.com:587) with app password
-- aiosmtplib for async email sending
-- Jinja2 templates for email HTML
+- Telegram Bot API for all notifications
+- Bot: @SmartAI22Bot (TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID in .env)
+- Notifications: pipeline complete, lockup expired, rebalance alerts, weekly reports
 
 ## IMPORTANT
 - NEVER commit .env files or expose secrets

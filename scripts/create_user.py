@@ -21,8 +21,12 @@ def main() -> None:
         print("Error: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
         sys.exit(1)
 
-    email = os.getenv("AUTH_USER_EMAIL", "pedropestana.fgv@gmail.com")
+    email = os.getenv("AUTH_USER_EMAIL")
     password = os.getenv("AUTH_USER_PASSWORD")
+
+    if not email:
+        print("Error: AUTH_USER_EMAIL must be set in .env")
+        sys.exit(1)
 
     if not password:
         print("Error: AUTH_USER_PASSWORD must be set in .env")

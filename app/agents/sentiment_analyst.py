@@ -32,19 +32,31 @@ def _extract_tickers(agent_output: dict[str, Any]) -> list[str]:
     """Extract ticker list from a deep research agent output."""
     tickers = []
 
-    # Try standard format
+    # Standard format (single-turn or final round output)
     for analysis in agent_output.get("analises", []):
         ticker = analysis.get("ticker")
-        if ticker:
+        if ticker and ticker not in tickers:
             tickers.append(ticker)
 
-    # Try round_outputs format (multi-turn)
+    # Try deep_dive format (round 2)
     if not tickers:
-        for round_data in agent_output.get("_round_outputs", []):
-            output = round_data.get("output", {})
-            for analysis in output.get("analises", []):
-                ticker = analysis.get("ticker")
-                if ticker and ticker not in tickers:
-                    tickers.append(ticker)
+        for item in agent_output.get("deep_dive", []):
+            ticker = item.get("ticker")
+            if ticker and ticker not in tickers:
+                tickers.append(ticker)
+
+    # Try devils_advocate format (round 3)
+    if not tickers:
+        for item in agent_output.get("devils_advocate", []):
+            ticker = item.get("ticker")
+            if ticker and ticker not in tickers:
+                tickers.append(ticker)
+
+    # Try candidatos format (screener output)
+    if not tickers:
+        for item in agent_output.get("candidatos", []):
+            ticker = item.get("ticker")
+            if ticker and ticker not in tickers:
+                tickers.append(ticker)
 
     return tickers
