@@ -27,6 +27,7 @@ class ClaudeSession:
     CLAUDE_URL = "https://claude.ai/new"
     RATE_LIMIT_SECONDS = 30
     RESPONSE_TIMEOUT_MS = 300_000  # 5 minutes
+    NAV_TIMEOUT_MS = 60_000  # 60s for navigation (Turnstile can be slow)
 
     def __init__(self) -> None:
         self._playwright = None
@@ -87,8 +88,10 @@ class ClaudeSession:
         if not self._page:
             raise RuntimeError("Browser not initialized. Call initialize() first.")
 
-        await self._page.goto(self.CLAUDE_URL, wait_until="networkidle", timeout=30000)
-        await asyncio.sleep(2)
+        await self._page.goto(
+            self.CLAUDE_URL, wait_until="domcontentloaded", timeout=self.NAV_TIMEOUT_MS
+        )
+        await asyncio.sleep(3)
 
         current_url = self._page.url
         if "login" in current_url.lower():
@@ -132,7 +135,7 @@ class ClaudeSession:
 
             if not resumed:
                 # Start a new conversation
-                await self._page.goto(self.CLAUDE_URL, wait_until="networkidle", timeout=30000)
+                await self._page.goto(self.CLAUDE_URL, wait_until="domcontentloaded", timeout=60000)
                 await asyncio.sleep(2)
 
                 if research_mode:
@@ -211,7 +214,7 @@ class ClaudeSession:
             raise RuntimeError("Browser not initialized")
 
         logger.info("starting_manual_login", url=self.CLAUDE_URL)
-        await self._page.goto(self.CLAUDE_URL, wait_until="networkidle", timeout=60000)
+        await self._page.goto(self.CLAUDE_URL, wait_until="domcontentloaded", timeout=60000)
 
         logger.info("waiting_for_manual_login", timeout="5 minutes")
         try:
@@ -273,7 +276,7 @@ class ClaudeSession:
                 messages=msg_count,
             )
 
-            await self._page.goto(conversation_url, wait_until="networkidle", timeout=30000)
+            await self._page.goto(conversation_url, wait_until="domcontentloaded", timeout=60000)
             await asyncio.sleep(2)
 
             # Verify we're on the conversation page (not redirected to login)
