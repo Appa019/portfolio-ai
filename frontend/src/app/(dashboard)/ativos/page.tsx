@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
-  Trash2,
+  Minus,
   ChevronDown,
   ChevronUp,
   ArrowUpDown,
@@ -12,12 +12,14 @@ import {
   Unlock,
   AlertTriangle,
   PackageOpen,
+  DollarSign,
 } from "lucide-react";
 import {
   addAsset,
-  removeAsset,
+  sellAsset,
   type Asset,
   type AssetCreate,
+  type SaleResult,
 } from "@/lib/api";
 import { usePortfolio } from "@/hooks/use-portfolio";
 
@@ -53,8 +55,9 @@ type SortDirection = "asc" | "desc";
 
 function AtivosPage() {
   const { data, loading, refresh } = usePortfolio();
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [removeTarget, setRemoveTarget] = useState<Asset | null>(null);
+  const [showBuyForm, setShowBuyForm] = useState(false);
+  const [sellTarget, setSellTarget] = useState<Asset | null>(null);
+  const [lastSale, setLastSale] = useState<SaleResult | null>(null);
   const [formData, setFormData] = useState<Partial<AssetCreate>>({
     asset_class: "stocks",
   });
@@ -71,17 +74,16 @@ function AtivosPage() {
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    if (removeTarget) {
+    if (sellTarget) {
       dialog.showModal();
     } else {
       dialog.close();
     }
-  }, [removeTarget]);
+  }, [sellTarget]);
 
-  // Clear message after 4 seconds
   useEffect(() => {
     if (!message) return;
-    const timer = setTimeout(() => setMessage(null), 4000);
+    const timer = setTimeout(() => setMessage(null), 5000);
     return () => clearTimeout(timer);
   }, [message]);
 
@@ -141,7 +143,7 @@ function AtivosPage() {
     });
   }, [data?.assets, filter, sortField, sortDirection]);
 
-  async function handleAdd(e: React.FormEvent) {
+  async function handleBuy(e: React.FormEvent) {
     e.preventDefault();
     if (
       !formData.ticker ||
@@ -149,45 +151,43 @@ function AtivosPage() {
       !formData.avg_price ||
       !formData.asset_class
     ) {
-      setMessage({
-        type: "error",
-        text: "Preencha todos os campos obrigatorios",
-      });
+      setMessage({ type: "error", text: "Preencha todos os campos obrigatorios" });
       return;
     }
 
     setIsSubmitting(true);
     try {
       await addAsset(formData as AssetCreate);
-      setMessage({
-        type: "success",
-        text: `${formData.ticker} adicionado com sucesso`,
-      });
+      setMessage({ type: "success", text: `Compra de ${formData.ticker} registrada` });
       setFormData({ asset_class: "stocks" });
-      setShowAddForm(false);
+      setShowBuyForm(false);
       await refresh();
     } catch (err) {
       setMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Erro ao adicionar",
+        text: err instanceof Error ? err.message : "Erro ao comprar",
       });
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  async function handleRemove() {
-    if (!removeTarget) return;
+  async function handleSell() {
+    if (!sellTarget) return;
     setIsSubmitting(true);
     try {
-      await removeAsset(removeTarget.id);
-      setMessage({ type: "success", text: `${removeTarget.ticker} removido` });
-      setRemoveTarget(null);
+      const result = await sellAsset(sellTarget.id);
+      setLastSale(result);
+      setMessage({
+        type: "success",
+        text: `${result.ticker} vendido por ${formatBRL(result.sale_value)}. Redistribua esse valor em um novo aporte.`,
+      });
+      setSellTarget(null);
       await refresh();
     } catch (err) {
       setMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Erro ao remover",
+        text: err instanceof Error ? err.message : "Erro ao vender",
       });
     } finally {
       setIsSubmitting(false);
@@ -209,20 +209,16 @@ function AtivosPage() {
             className="font-sans text-sm mt-2"
             style={{ color: "var(--text-muted)" }}
           >
-            Gerencie os ativos da sua carteira
+            Compre e venda ativos da sua carteira
           </p>
         </div>
         <button
-          onClick={() => setShowAddForm(!showAddForm)}
+          onClick={() => setShowBuyForm(!showBuyForm)}
           className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-sans text-sm font-semibold transition-opacity hover:opacity-90 cursor-pointer"
-          style={{ background: "var(--accent)", color: "white" }}
+          style={{ background: "var(--success)", color: "white" }}
         >
-          {showAddForm ? (
-            <ChevronUp size={16} />
-          ) : (
-            <Plus size={16} />
-          )}
-          {showAddForm ? "Fechar" : "Adicionar"}
+          {showBuyForm ? <ChevronUp size={16} /> : <Plus size={16} />}
+          {showBuyForm ? "Fechar" : "Comprar"}
         </button>
       </div>
 
@@ -240,9 +236,7 @@ function AtivosPage() {
                   ? "var(--accent-light)"
                   : "oklch(0.95 0.04 25)",
               color:
-                message.type === "success"
-                  ? "var(--accent)"
-                  : "var(--danger)",
+                message.type === "success" ? "var(--accent)" : "var(--danger)",
             }}
           >
             {message.text}
@@ -250,9 +244,55 @@ function AtivosPage() {
         )}
       </AnimatePresence>
 
-      {/* Add Form — Collapsible */}
+      {/* Last sale redistribution banner */}
       <AnimatePresence>
-        {showAddForm && (
+        {lastSale && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="p-5 rounded-lg flex items-center justify-between"
+            style={{
+              background: "var(--bg-card)",
+              border: "1px solid var(--accent)",
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <DollarSign size={20} style={{ color: "var(--accent)" }} />
+              <div>
+                <p
+                  className="font-sans text-sm font-semibold"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  {formatBRL(lastSale.sale_value)} disponivel para
+                  redistribuicao
+                </p>
+                <p
+                  className="font-sans text-xs mt-0.5"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Venda de {lastSale.ticker} ({lastSale.quantity} un. a{" "}
+                  {formatBRL(lastSale.price)})
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setLastSale(null)}
+              className="font-sans text-xs px-3 py-1.5 rounded cursor-pointer"
+              style={{
+                background: "var(--bg-secondary)",
+                color: "var(--text-muted)",
+              }}
+            >
+              Dispensar
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Buy Form */}
+      <AnimatePresence>
+        {showBuyForm && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -271,10 +311,10 @@ function AtivosPage() {
                 className="font-serif text-lg mb-6"
                 style={{ color: "var(--text-primary)" }}
               >
-                Adicionar Ativo
+                Registrar Compra
               </h3>
               <form
-                onSubmit={handleAdd}
+                onSubmit={handleBuy}
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl"
               >
                 <InputField
@@ -333,7 +373,7 @@ function AtivosPage() {
                   type="number"
                 />
                 <InputField
-                  label="Preco Medio (R$)"
+                  label="Preco (R$)"
                   value={formData.avg_price?.toString() || ""}
                   onChange={(v) =>
                     setFormData({ ...formData, avg_price: parseFloat(v) || 0 })
@@ -342,7 +382,7 @@ function AtivosPage() {
                   type="number"
                 />
                 <InputField
-                  label="Data Entrada"
+                  label="Data"
                   value={formData.entry_date || ""}
                   onChange={(v) =>
                     setFormData({ ...formData, entry_date: v })
@@ -353,14 +393,15 @@ function AtivosPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-6 py-2.5 rounded-lg font-sans text-sm font-semibold transition-opacity disabled:opacity-40 cursor-pointer"
-                    style={{ background: "var(--accent)", color: "white" }}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-sans text-sm font-semibold transition-opacity disabled:opacity-40 cursor-pointer"
+                    style={{ background: "var(--success)", color: "white" }}
                   >
-                    {isSubmitting ? "Adicionando..." : "Adicionar"}
+                    <Plus size={14} />
+                    {isSubmitting ? "Comprando..." : "Comprar"}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setShowAddForm(false)}
+                    onClick={() => setShowBuyForm(false)}
                     className="px-6 py-2.5 rounded-lg font-sans text-sm font-medium cursor-pointer"
                     style={{
                       background: "var(--bg-secondary)",
@@ -385,10 +426,9 @@ function AtivosPage() {
             className="px-4 py-2 rounded-lg font-sans text-sm font-medium transition-colors cursor-pointer"
             style={{
               background:
-                filter === tab.value
-                  ? "var(--accent)"
-                  : "var(--bg-secondary)",
-              color: filter === tab.value ? "white" : "var(--text-secondary)",
+                filter === tab.value ? "var(--accent)" : "var(--bg-secondary)",
+              color:
+                filter === tab.value ? "white" : "var(--text-secondary)",
             }}
           >
             {tab.label}
@@ -428,9 +468,7 @@ function AtivosPage() {
               className="font-sans text-xs mt-1"
               style={{ color: "var(--text-muted)" }}
             >
-              {filter !== "all"
-                ? "Tente outro filtro ou adicione um ativo"
-                : "Clique em Adicionar para comecar"}
+              Clique em Comprar para adicionar
             </p>
           </div>
         ) : (
@@ -444,69 +482,15 @@ function AtivosPage() {
                     borderBottom: "1px solid var(--border)",
                   }}
                 >
-                  <SortableHeader
-                    label="Ativo"
-                    field="ticker"
-                    current={sortField}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                  />
-                  <SortableHeader
-                    label="Classe"
-                    field="asset_class"
-                    current={sortField}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                  />
-                  <SortableHeader
-                    label="Qtd"
-                    field="quantity"
-                    current={sortField}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                  />
-                  <SortableHeader
-                    label="PM"
-                    field="avg_price"
-                    current={sortField}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                  />
-                  <SortableHeader
-                    label="Atual"
-                    field="current_price"
-                    current={sortField}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                  />
-                  <SortableHeader
-                    label="P&L"
-                    field="pnl"
-                    current={sortField}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                  />
-                  <SortableHeader
-                    label="Valor"
-                    field="total_value"
-                    current={sortField}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                  />
-                  <SortableHeader
-                    label="Status"
-                    field="status"
-                    current={sortField}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                    align="center"
-                  />
-                  <th className="px-4 pb-3 font-medium w-12" />
+                  <SortableHeader label="Ativo" field="ticker" current={sortField} direction={sortDirection} onSort={handleSort} />
+                  <SortableHeader label="Classe" field="asset_class" current={sortField} direction={sortDirection} onSort={handleSort} />
+                  <SortableHeader label="Qtd" field="quantity" current={sortField} direction={sortDirection} onSort={handleSort} align="right" />
+                  <SortableHeader label="PM" field="avg_price" current={sortField} direction={sortDirection} onSort={handleSort} align="right" />
+                  <SortableHeader label="Atual" field="current_price" current={sortField} direction={sortDirection} onSort={handleSort} align="right" />
+                  <SortableHeader label="P&L" field="pnl" current={sortField} direction={sortDirection} onSort={handleSort} align="right" />
+                  <SortableHeader label="Valor" field="total_value" current={sortField} direction={sortDirection} onSort={handleSort} align="right" />
+                  <SortableHeader label="Status" field="status" current={sortField} direction={sortDirection} onSort={handleSort} align="center" />
+                  <th className="px-4 pb-3 font-medium w-20" />
                 </tr>
               </thead>
               <tbody>
@@ -515,8 +499,7 @@ function AtivosPage() {
                   const totalValue = asset.quantity * currentPrice;
                   const pnl =
                     asset.avg_price > 0
-                      ? ((currentPrice - asset.avg_price) / asset.avg_price) *
-                        100
+                      ? ((currentPrice - asset.avg_price) / asset.avg_price) * 100
                       : 0;
                   const lockDays = computeLockDays(asset.locked_until);
 
@@ -524,22 +507,14 @@ function AtivosPage() {
                     <tr
                       key={asset.id}
                       className="group transition-colors"
-                      style={{
-                        borderBottom: "1px solid var(--border)",
-                      }}
+                      style={{ borderBottom: "1px solid var(--border)" }}
                     >
                       <td className="px-4 py-3.5">
-                        <span
-                          className="font-semibold"
-                          style={{ color: "var(--text-primary)" }}
-                        >
+                        <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
                           {asset.ticker}
                         </span>
                         {asset.name && (
-                          <span
-                            className="block text-xs mt-0.5"
-                            style={{ color: "var(--text-muted)" }}
-                          >
+                          <span className="block text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
                             {asset.name}
                           </span>
                         )}
@@ -547,81 +522,49 @@ function AtivosPage() {
                       <td className="px-4 py-3.5">
                         <span
                           className="text-xs px-2 py-0.5 rounded font-medium"
-                          style={{
-                            background: "var(--bg-secondary)",
-                            color: "var(--text-secondary)",
-                          }}
+                          style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}
                         >
                           {CLASS_LABELS[asset.asset_class]}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-right tabular-nums">
-                        {formatNumber(asset.quantity)}
-                      </td>
-                      <td className="px-4 py-3.5 text-right tabular-nums">
-                        {formatBRL(asset.avg_price)}
-                      </td>
-                      <td className="px-4 py-3.5 text-right tabular-nums">
-                        {formatBRL(currentPrice)}
-                      </td>
+                      <td className="px-4 py-3.5 text-right tabular-nums">{formatNumber(asset.quantity)}</td>
+                      <td className="px-4 py-3.5 text-right tabular-nums">{formatBRL(asset.avg_price)}</td>
+                      <td className="px-4 py-3.5 text-right tabular-nums">{formatBRL(currentPrice)}</td>
                       <td
                         className="px-4 py-3.5 text-right tabular-nums font-medium"
                         style={{
-                          color:
-                            pnl > 0
-                              ? "var(--success)"
-                              : pnl < 0
-                                ? "var(--danger)"
-                                : "var(--text-secondary)",
+                          color: pnl > 0 ? "var(--success)" : pnl < 0 ? "var(--danger)" : "var(--text-secondary)",
                         }}
                       >
-                        {pnl > 0 ? "+" : ""}
-                        {pnl.toFixed(2)}%
+                        {pnl > 0 ? "+" : ""}{pnl.toFixed(2)}%
                       </td>
-                      <td
-                        className="px-4 py-3.5 text-right tabular-nums font-semibold"
-                        style={{ color: "var(--text-primary)" }}
-                      >
+                      <td className="px-4 py-3.5 text-right tabular-nums font-semibold" style={{ color: "var(--text-primary)" }}>
                         {formatBRL(totalValue)}
                       </td>
                       <td className="px-4 py-3.5 text-center">
                         {asset.status === "locked" ? (
-                          <span
-                            className="inline-flex items-center gap-1 text-xs font-medium"
-                            style={{ color: "var(--warning)" }}
-                          >
-                            <Lock size={12} />
-                            {lockDays}d
+                          <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: "var(--warning)" }}>
+                            <Lock size={12} />{lockDays}d
                           </span>
                         ) : asset.status === "under_review" ? (
-                          <span
-                            className="inline-flex items-center gap-1 text-xs font-medium"
-                            style={{ color: "var(--accent)" }}
-                          >
-                            <AlertTriangle size={12} />
-                            Review
+                          <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: "var(--accent)" }}>
+                            <AlertTriangle size={12} />Review
                           </span>
                         ) : (
-                          <span
-                            className="inline-flex items-center gap-1 text-xs font-medium"
-                            style={{ color: "var(--success)" }}
-                          >
-                            <Unlock size={12} />
-                            Livre
+                          <span className="inline-flex items-center gap-1 text-xs font-medium" style={{ color: "var(--success)" }}>
+                            <Unlock size={12} />Livre
                           </span>
                         )}
                       </td>
                       <td className="px-4 py-3.5 text-center">
                         {asset.status === "free" && (
                           <button
-                            onClick={() => setRemoveTarget(asset)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-[var(--bg-secondary)] cursor-pointer"
-                            title={`Remover ${asset.ticker}`}
+                            onClick={() => setSellTarget(asset)}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-sans text-xs font-semibold transition-opacity hover:opacity-80 cursor-pointer"
+                            style={{ background: "oklch(0.95 0.04 25)", color: "var(--danger)" }}
                           >
-                            <Trash2
-                              size={14}
-                              style={{ color: "var(--danger)" }}
-                            />
+                            <Minus size={12} />
+                            Vender
                           </button>
                         )}
                       </td>
@@ -634,46 +577,61 @@ function AtivosPage() {
         )}
       </div>
 
-      {/* Remove Confirmation Modal */}
+      {/* Sell Confirmation Modal */}
       <dialog
         ref={dialogRef}
-        onClose={() => setRemoveTarget(null)}
+        onClose={() => setSellTarget(null)}
         className="p-8 rounded-lg max-w-md w-full backdrop:bg-black/30"
-        style={{
-          background: "var(--bg-card)",
-          border: "1px solid var(--border)",
-        }}
+        style={{ background: "var(--bg-card)", border: "1px solid var(--border)" }}
       >
-        {removeTarget && (
+        {sellTarget && (
           <>
-            <h3
-              className="font-serif text-lg mb-2"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Remover {removeTarget.ticker}?
+            <h3 className="font-serif text-lg mb-2" style={{ color: "var(--text-primary)" }}>
+              Vender {sellTarget.ticker}?
             </h3>
-            <p
-              className="font-sans text-sm mb-6"
-              style={{ color: "var(--text-secondary)" }}
+            <div
+              className="p-4 rounded-lg mb-4"
+              style={{ background: "var(--bg-secondary)" }}
             >
-              Esta acao nao pode ser desfeita.
+              <div className="flex justify-between mb-2">
+                <span className="font-sans text-xs" style={{ color: "var(--text-muted)" }}>Quantidade</span>
+                <span className="font-sans text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                  {formatNumber(sellTarget.quantity)}
+                </span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="font-sans text-xs" style={{ color: "var(--text-muted)" }}>Preco Atual</span>
+                <span className="font-sans text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>
+                  {formatBRL(sellTarget.current_price ?? sellTarget.avg_price)}
+                </span>
+              </div>
+              <div
+                className="flex justify-between pt-2"
+                style={{ borderTop: "1px solid var(--border)" }}
+              >
+                <span className="font-sans text-xs font-medium" style={{ color: "var(--text-muted)" }}>Valor Total</span>
+                <span className="font-sans text-lg font-bold tabular-nums" style={{ color: "var(--accent)" }}>
+                  {formatBRL(sellTarget.quantity * (sellTarget.current_price ?? sellTarget.avg_price))}
+                </span>
+              </div>
+            </div>
+            <p className="font-sans text-xs mb-6" style={{ color: "var(--text-muted)" }}>
+              O valor da venda ficara disponivel para redistribuicao em novos ativos.
             </p>
             <div className="flex gap-3">
               <button
-                onClick={handleRemove}
+                onClick={handleSell}
                 disabled={isSubmitting}
-                className="px-6 py-2.5 rounded-lg font-sans text-sm font-semibold transition-opacity disabled:opacity-40 cursor-pointer"
+                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-sans text-sm font-semibold transition-opacity disabled:opacity-40 cursor-pointer"
                 style={{ background: "var(--danger)", color: "white" }}
               >
-                {isSubmitting ? "Removendo..." : "Remover"}
+                <Minus size={14} />
+                {isSubmitting ? "Vendendo..." : "Confirmar Venda"}
               </button>
               <button
-                onClick={() => setRemoveTarget(null)}
+                onClick={() => setSellTarget(null)}
                 className="px-6 py-2.5 rounded-lg font-sans text-sm font-medium cursor-pointer"
-                style={{
-                  background: "var(--bg-secondary)",
-                  color: "var(--text-secondary)",
-                }}
+                style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}
               >
                 Cancelar
               </button>
@@ -685,35 +643,15 @@ function AtivosPage() {
   );
 }
 
-// Sortable table header
 function SortableHeader({
-  label,
-  field,
-  current,
-  direction,
-  onSort,
-  align = "left",
+  label, field, current, direction, onSort, align = "left",
 }: {
-  label: string;
-  field: SortField;
-  current: SortField;
-  direction: SortDirection;
-  onSort: (field: SortField) => void;
-  align?: "left" | "right" | "center";
+  label: string; field: SortField; current: SortField; direction: SortDirection;
+  onSort: (field: SortField) => void; align?: "left" | "right" | "center";
 }) {
   const isActive = current === field;
-  const textAlign =
-    align === "right"
-      ? "text-right"
-      : align === "center"
-        ? "text-center"
-        : "text-left";
-  const justify =
-    align === "right"
-      ? "justify-end"
-      : align === "center"
-        ? "justify-center"
-        : "justify-start";
+  const textAlign = align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
+  const justify = align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start";
 
   return (
     <th className={`px-4 pb-3 font-medium ${textAlign}`}>
@@ -724,11 +662,7 @@ function SortableHeader({
       >
         {label}
         {isActive ? (
-          direction === "asc" ? (
-            <ChevronUp size={12} />
-          ) : (
-            <ChevronDown size={12} />
-          )
+          direction === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />
         ) : (
           <ArrowUpDown size={10} className="opacity-40" />
         )}
@@ -738,66 +672,35 @@ function SortableHeader({
 }
 
 function InputField({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
+  label, value, onChange, placeholder, type = "text",
 }: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
+  label: string; value: string; onChange: (v: string) => void;
+  placeholder?: string; type?: string;
 }) {
-  const id = label
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+  const id = label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   return (
     <div>
-      <label
-        htmlFor={id}
-        className="font-sans text-xs uppercase tracking-wider font-medium block mb-2"
-        style={{ color: "var(--text-muted)" }}
-      >
+      <label htmlFor={id} className="font-sans text-xs uppercase tracking-wider font-medium block mb-2" style={{ color: "var(--text-muted)" }}>
         {label}
       </label>
       <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        step={type === "number" ? "any" : undefined}
+        id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder} step={type === "number" ? "any" : undefined}
         className="w-full px-4 py-2.5 rounded-lg font-sans text-sm outline-none"
-        style={{
-          background: "var(--bg-secondary)",
-          border: "1px solid var(--border)",
-          color: "var(--text-primary)",
-        }}
+        style={{ background: "var(--bg-secondary)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
       />
     </div>
   );
 }
 
 function formatBRL(value: number): string {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-  }).format(value);
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 }).format(value);
 }
 
 function formatNumber(value: number): string {
-  if (value >= 1) {
-    return new Intl.NumberFormat("pt-BR", {
-      maximumFractionDigits: 2,
-    }).format(value);
-  }
-  return new Intl.NumberFormat("pt-BR", {
-    maximumFractionDigits: 8,
-  }).format(value);
+  return value >= 1
+    ? new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(value)
+    : new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 8 }).format(value);
 }
 
 function computeLockDays(lockedUntil: string | null): number {
@@ -806,10 +709,7 @@ function computeLockDays(lockedUntil: string | null): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   lockDate.setHours(0, 0, 0, 0);
-  const diff = Math.ceil(
-    (lockDate.getTime() - today.getTime()) / 86400000
-  );
-  return Math.max(0, diff);
+  return Math.max(0, Math.ceil((lockDate.getTime() - today.getTime()) / 86400000));
 }
 
 export { AtivosPage as default };

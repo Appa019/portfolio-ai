@@ -115,6 +115,50 @@ async def remove_asset(asset_id: str) -> dict[str, Any]:
     return asset
 
 
+async def sell_asset(asset_id: str) -> dict[str, Any]:
+    """Sell an asset: record transaction, remove from portfolio, return sale details."""
+    db = get_supabase()
+    result = db.table("portfolio_assets").select("*").eq("id", asset_id).execute()
+
+    if not result.data:
+        raise ValueError(f"Asset {asset_id} not found")
+
+    asset = result.data[0]
+    if asset.get("locked_until"):
+        lock_date = date.fromisoformat(asset["locked_until"])
+        if lock_date > date.today():
+            days_left = (lock_date - date.today()).days
+            raise ValueError(f"Asset {asset['ticker']} is locked for {days_left} more days")
+
+    qty = Decimal(str(asset.get("quantity", 0)))
+    price = Decimal(str(asset.get("current_price") or asset.get("avg_price", 0)))
+    sale_value = qty * price
+
+    # Record sell transaction
+    db.table("transactions").insert(
+        {
+            "asset_id": asset_id,
+            "ticker": asset["ticker"],
+            "type": "sell",
+            "quantity": str(qty),
+            "price_brl": str(price),
+        }
+    ).execute()
+
+    # Remove asset
+    db.table("portfolio_assets").delete().eq("id", asset_id).execute()
+    logger.info("asset_sold", ticker=asset["ticker"], value=str(sale_value))
+
+    return {
+        "ticker": asset["ticker"],
+        "quantity": float(qty),
+        "price": float(price),
+        "sale_value": float(sale_value),
+        "asset_class": asset["asset_class"],
+        "message": f"{asset['ticker']} vendido por R$ {sale_value:,.2f}",
+    }
+
+
 async def check_lockup_expiry() -> list[dict[str, Any]]:
     """Find assets completing 30 days (D+30) for reevaluation."""
     db = get_supabase()

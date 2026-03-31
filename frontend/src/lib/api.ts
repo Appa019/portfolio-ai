@@ -46,6 +46,21 @@ export function removeAsset(id: string) {
   });
 }
 
+export function sellAsset(id: string) {
+  return request<SaleResult>(`/api/portfolio/assets/${id}/sell`, {
+    method: "POST",
+  });
+}
+
+export interface SaleResult {
+  ticker: string;
+  quantity: number;
+  price: number;
+  sale_value: number;
+  asset_class: string;
+  message: string;
+}
+
 // Prices
 export function updatePrices() {
   return request<{ updated: number; results: Record<string, string> }>("/api/prices/update", {

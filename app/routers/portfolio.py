@@ -34,6 +34,15 @@ async def create_asset(asset: AssetCreate):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post("/assets/{asset_id}/sell")
+async def sell_asset(asset_id: str):
+    """Sell an asset and record the transaction. Returns sale value for redistribution."""
+    try:
+        return await portfolio_service.sell_asset(asset_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.delete("/assets/{asset_id}")
 async def delete_asset(asset_id: str):
     """Remove an asset from the portfolio (fails if locked)."""

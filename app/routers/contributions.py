@@ -17,11 +17,7 @@ async def list_contributions():
     """List all contributions ordered by most recent."""
     db = get_supabase()
     result = (
-        db.table("contributions")
-        .select("*")
-        .order("created_at", desc=True)
-        .limit(20)
-        .execute()
+        db.table("contributions").select("*").order("created_at", desc=True).limit(20).execute()
     )
     return result.data or []
 
@@ -56,6 +52,30 @@ async def create_contribution(data: ContributionCreate, background_tasks: Backgr
         "status": "pending",
         "message": "Pipeline started. Connect to WebSocket for real-time updates.",
         "ws_url": f"/api/ws/pipeline/{contribution_id}",
+    }
+
+
+@router.post("/withdraw", status_code=201)
+async def create_withdrawal(data: ContributionCreate):
+    """Register a capital withdrawal (no pipeline)."""
+    db = get_supabase()
+    result = (
+        db.table("contributions")
+        .insert(
+            {
+                "amount_brl": str(-data.amount_brl),
+                "status": "completed",
+                "pipeline_log": [{"type": "withdrawal"}],
+            }
+        )
+        .execute()
+    )
+    withdrawal = result.data[0]
+    logger.info("withdrawal_registered", amount=str(data.amount_brl))
+    return {
+        "id": withdrawal["id"],
+        "status": "completed",
+        "message": f"Retirada de R$ {data.amount_brl} registrada",
     }
 
 

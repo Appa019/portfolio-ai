@@ -24,6 +24,7 @@ import {
 import {
   createContribution,
   fetchContribution,
+  API_BASE,
   type Contribution,
   type PipelineEvent,
 } from "@/lib/api";
@@ -46,10 +47,12 @@ const PIPELINE_AGENTS = [
 ] as const;
 
 function AportePage() {
+  const [mode, setMode] = useState<"aporte" | "retirada">("aporte");
   const [amount, setAmount] = useState("");
   const [contributionId, setContributionId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [completedContribution, setCompletedContribution] =
     useState<Contribution | null>(null);
 
@@ -83,6 +86,28 @@ function AportePage() {
 
     setIsSubmitting(true);
     setError(null);
+    setSuccessMsg(null);
+
+    if (mode === "retirada") {
+      try {
+        const res = await fetch(`${API_BASE}/api/aporte/withdraw`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount_brl: value }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ detail: "Erro" }));
+          throw new Error(data.detail || "Erro ao registrar retirada");
+        }
+        setSuccessMsg(`Retirada de R$ ${amount} registrada com sucesso`);
+        setAmount("");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erro ao registrar retirada");
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
 
     try {
       const result = await createContribution(value);
@@ -125,22 +150,65 @@ function AportePage() {
           className="font-serif text-4xl tracking-tight"
           style={{ color: "var(--text-primary)" }}
         >
-          Novo Aporte
+          {mode === "aporte" ? "Novo Aporte" : "Retirada"}
         </h2>
         <p
           className="font-sans text-sm mt-2"
           style={{ color: "var(--text-muted)" }}
         >
-          Registre um aporte para iniciar a analise multi-agente
+          {mode === "aporte"
+            ? "Registre um aporte para iniciar a analise multi-agente"
+            : "Registre uma retirada de capital da carteira"}
         </p>
       </div>
+
+      {/* Mode tabs */}
+      {!contributionId && (
+        <div className="flex gap-1">
+          <button
+            onClick={() => { setMode("aporte"); setError(null); setSuccessMsg(null); }}
+            className="px-5 py-2 rounded-lg font-sans text-sm font-medium transition-colors cursor-pointer"
+            style={{
+              background: mode === "aporte" ? "var(--success)" : "var(--bg-secondary)",
+              color: mode === "aporte" ? "white" : "var(--text-secondary)",
+            }}
+          >
+            + Aporte
+          </button>
+          <button
+            onClick={() => { setMode("retirada"); setError(null); setSuccessMsg(null); }}
+            className="px-5 py-2 rounded-lg font-sans text-sm font-medium transition-colors cursor-pointer"
+            style={{
+              background: mode === "retirada" ? "var(--danger)" : "var(--bg-secondary)",
+              color: mode === "retirada" ? "white" : "var(--text-secondary)",
+            }}
+          >
+            - Retirada
+          </button>
+        </div>
+      )}
+
+      {/* Success message for withdrawals */}
+      <AnimatePresence>
+        {successMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="p-4 rounded-lg font-sans text-sm font-medium"
+            style={{ background: "var(--accent-light)", color: "var(--accent)" }}
+          >
+            {successMsg}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Form */}
       <div
         className="p-8 rounded-lg max-w-lg"
         style={{
           background: "var(--bg-card)",
-          border: "1px solid var(--border)",
+          border: `1px solid ${mode === "retirada" ? "var(--danger)" : "var(--border)"}`,
         }}
       >
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -150,7 +218,7 @@ function AportePage() {
               className="font-sans text-xs uppercase tracking-wider font-medium block mb-3"
               style={{ color: "var(--text-muted)" }}
             >
-              Valor do Aporte
+              {mode === "aporte" ? "Valor do Aporte" : "Valor da Retirada"}
             </label>
             <div className="relative">
               <span
@@ -201,7 +269,11 @@ function AportePage() {
               }}
             >
               <Send size={16} />
-              {isSubmitting ? "Registrando..." : "Iniciar Analise"}
+              {isSubmitting
+                ? "Registrando..."
+                : mode === "retirada"
+                  ? "Registrar Retirada"
+                  : "Iniciar Analise"}
             </button>
           )}
         </form>
