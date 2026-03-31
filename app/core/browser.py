@@ -366,7 +366,13 @@ class ClaudeSession:
         return None
 
     async def _enable_research_mode(self) -> None:
-        """Enable 'Pesquisa' (Search) mode via model selector dropdown."""
+        """Configure Claude for maximum research quality.
+
+        Opens the model selector dropdown and:
+        1. Selects Opus 4.6 model
+        2. Enables Extended Thinking
+        3. Enables Pesquisa (Search) mode
+        """
         if not self._page:
             return
 
@@ -374,13 +380,51 @@ class ClaudeSession:
             # Open model selector dropdown
             dropdown = await self._page.query_selector(selectors.MODEL_SELECTOR)
             if not dropdown:
-                logger.info("model_selector_not_found_skipping_research")
+                logger.info("model_selector_not_found")
                 return
 
             await dropdown.click()
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(2)
 
-            # Find Pesquisa checkbox
+            # Step 1: Select Opus 4.6
+            opus = await self._page.query_selector('[role="menuitem"]:has-text("Opus 4.6")')
+            if opus:
+                # Check if already selected (has checkmark svg)
+                html = await opus.inner_html()
+                if "M232.49,80.49" not in html:  # checkmark SVG path
+                    await opus.click()
+                    await asyncio.sleep(2)
+                    # Re-open dropdown after model change
+                    dropdown = await self._page.query_selector(selectors.MODEL_SELECTOR)
+                    if dropdown:
+                        await dropdown.click()
+                        await asyncio.sleep(2)
+                    logger.info("model_selected", model="opus-4.6")
+                else:
+                    logger.info("model_already_opus_4.6")
+
+            # Step 2: Enable Extended Thinking
+            # The toggle is a switch inside a menuitem with "Pensamento estendido"
+            extended_item = await self._page.query_selector(
+                '[role="menuitem"]:has-text("Pensamento estendido")'
+            )
+            if not extended_item:
+                extended_item = await self._page.query_selector(
+                    '[role="menuitem"]:has-text("Extended thinking")'
+                )
+
+            if extended_item:
+                switch = await extended_item.query_selector('input[role="switch"]')
+                if switch:
+                    is_checked = await switch.is_checked()
+                    if not is_checked:
+                        await switch.click()
+                        await asyncio.sleep(1)
+                        logger.info("extended_thinking_enabled")
+                    else:
+                        logger.info("extended_thinking_already_enabled")
+
+            # Step 3: Enable Pesquisa (Search)
             pesquisa = await self._page.query_selector(
                 '[role="menuitemcheckbox"]:has-text("Pesquisa")'
             )
@@ -405,7 +449,7 @@ class ClaudeSession:
             await asyncio.sleep(0.5)
 
         except Exception:
-            logger.warning("research_mode_enable_failed", exc_info=True)
+            logger.warning("model_config_failed", exc_info=True)
             try:
                 await self._page.keyboard.press("Escape")
             except Exception:
