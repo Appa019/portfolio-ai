@@ -22,12 +22,7 @@ async def get_portfolio_summary() -> PortfolioSummary:
     """Calculate complete portfolio summary with allocation breakdown."""
     assets = await get_all_assets()
     allocation = _calculate_allocation(assets)
-
-    target = {
-        "fixed_income": settings.target_fixed_income * 100,
-        "stocks": settings.target_stocks * 100,
-        "crypto": settings.target_crypto * 100,
-    }
+    target = await _get_allocation_targets()
 
     deviation = {
         "fixed_income": allocation.fixed_income_pct - target["fixed_income"],
@@ -42,6 +37,29 @@ async def get_portfolio_summary() -> PortfolioSummary:
         deviation=deviation,
         assets=assets,
     )
+
+
+async def _get_allocation_targets() -> dict[str, float]:
+    """Read allocation targets from Supabase, fallback to config defaults."""
+    try:
+        db = get_supabase()
+        result = (
+            db.table("user_settings")
+            .select("value")
+            .eq("key", "allocation_targets")
+            .single()
+            .execute()
+        )
+        if result.data:
+            return result.data["value"]
+    except Exception:
+        logger.warning("failed_to_read_allocation_targets_from_db")
+
+    return {
+        "fixed_income": settings.target_fixed_income * 100,
+        "stocks": settings.target_stocks * 100,
+        "crypto": settings.target_crypto * 100,
+    }
 
 
 async def calculate_allocation() -> AllocationBreakdown:
