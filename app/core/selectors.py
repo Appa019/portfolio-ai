@@ -1,45 +1,42 @@
 # Centralized CSS selectors for claude.ai
 # Update these when the UI changes — single source of truth
+# Last verified: 2026-03-31
 
 # Chat input area
 CHAT_INPUT = 'div[contenteditable="true"].ProseMirror'
 CHAT_INPUT_FALLBACK = '[contenteditable="true"]'
 
-# Send button
-SEND_BUTTON = 'button[aria-label="Send Message"]'
-SEND_BUTTON_FALLBACK = 'button[type="submit"]'
+# Send button (Portuguese UI: "Enviar mensagem")
+SEND_BUTTON = 'button[aria-label="Enviar mensagem"]'
+SEND_BUTTON_FALLBACK = 'button[aria-label="Send Message"]'
 
 # Response indicators
 RESPONSE_STREAMING = '[data-is-streaming="true"]'
 RESPONSE_COMPLETE = '[data-is-streaming="false"]'
 
-# Message containers
-ASSISTANT_MESSAGE = '[data-testid="assistant-message"]'
-ASSISTANT_MESSAGE_FALLBACK = "div.font-claude-message"
+# Message containers — use streaming indicator as primary
+ASSISTANT_MESSAGE = '[data-is-streaming="false"]'
+ASSISTANT_MESSAGE_FALLBACK = '[data-testid*="message"]'
 
 # Message action buttons (appear when response is complete)
-MESSAGE_ACTIONS = '[data-testid="message-actions"]'
 COPY_BUTTON = 'button[aria-label="Copy"]'
+COPY_BUTTON_FALLBACK = 'button[aria-label="Copiar"]'
 
 # New chat
 NEW_CHAT_BUTTON = 'a[href="/new"]'
 
-# Research/search mode toggle
+# Research/search mode — no longer a separate toggle in current UI
 RESEARCH_TOGGLE = 'button[aria-label="Search"]'
-RESEARCH_TOGGLE_FALLBACK = '[data-testid="search-toggle"]'
+RESEARCH_TOGGLE_FALLBACK = 'button[aria-label="Pesquisar"]'
 
 # Login-related
 LOGIN_BUTTON = '[data-testid="login-button"]'
-GOOGLE_LOGIN_BUTTON = 'button:has-text("Continue with Google")'
-
-# Google OAuth selectors
-GOOGLE_EMAIL_INPUT = 'input[type="email"]'
-GOOGLE_PASSWORD_INPUT = 'input[type="password"]'
-GOOGLE_NEXT_BUTTON = "#identifierNext"
-GOOGLE_PASSWORD_NEXT = "#passwordNext"
 
 # Model selector
-MODEL_SELECTOR = '[data-testid="model-selector"]'
+MODEL_SELECTOR = '[data-testid="model-selector-dropdown"]'
 
-# Navigation
-SIDEBAR = 'nav[aria-label="Chat history"]'
+# User menu
+USER_MENU = '[data-testid="user-menu-button"]'
+
+# Sidebar
+SIDEBAR_TOGGLE = '[data-testid="pin-sidebar-toggle"]'

@@ -364,7 +364,12 @@ class ClaudeSession:
         return None
 
     async def _enable_research_mode(self) -> None:
-        """Toggle research/search mode on."""
+        """Try to enable search/research mode if available.
+
+        The Claude UI changes frequently. If the toggle is not found,
+        we continue without it — Claude still performs web searches
+        when asked in the prompt.
+        """
         toggle = await self._find_element(
             [selectors.RESEARCH_TOGGLE, selectors.RESEARCH_TOGGLE_FALLBACK]
         )
@@ -373,7 +378,7 @@ class ClaudeSession:
             await asyncio.sleep(1)
             logger.info("research_mode_enabled")
         else:
-            logger.warning("research_toggle_not_found")
+            logger.info("research_toggle_not_found_continuing")
 
     async def _type_prompt(self, text: str) -> None:
         """Type the prompt into the chat input."""
@@ -402,24 +407,26 @@ class ClaudeSession:
         if not self._page:
             return ""
 
-        await asyncio.sleep(3)
+        await asyncio.sleep(5)
 
+        # Wait for copy button (EN or PT) or streaming complete
+        copy_selector = f"{selectors.COPY_BUTTON}, {selectors.COPY_BUTTON_FALLBACK}"
         try:
             await self._page.wait_for_selector(
-                selectors.COPY_BUTTON,
+                copy_selector,
                 timeout=self.RESPONSE_TIMEOUT_MS,
             )
         except Exception:
             try:
                 await self._page.wait_for_selector(
                     selectors.RESPONSE_COMPLETE,
-                    timeout=30000,
+                    timeout=60000,
                 )
             except Exception:
                 logger.warning("response_wait_timeout_fallback")
-                await asyncio.sleep(10)
+                await asyncio.sleep(15)
 
-        await asyncio.sleep(2)
+        await asyncio.sleep(3)
         return await self._extract_last_response()
 
     async def _extract_last_response(self) -> str:
