@@ -12,6 +12,20 @@ logger = structlog.get_logger()
 router = APIRouter(prefix="/api/aporte", tags=["contributions"])
 
 
+@router.get("")
+async def list_contributions():
+    """List all contributions ordered by most recent."""
+    db = get_supabase()
+    result = (
+        db.table("contributions")
+        .select("*")
+        .order("created_at", desc=True)
+        .limit(20)
+        .execute()
+    )
+    return result.data or []
+
+
 @router.post("", status_code=201)
 async def create_contribution(data: ContributionCreate, background_tasks: BackgroundTasks):
     """Register a new contribution and start the agent pipeline."""

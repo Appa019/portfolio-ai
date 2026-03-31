@@ -62,12 +62,12 @@ export function AllocationChart({ allocation, target }: AllocationChartProps) {
         {(["fixed_income", "stocks", "crypto"] as const).map((key) => {
           const pct =
             key === "fixed_income"
-              ? allocation.fixed_income_pct
+              ? (allocation.fixed_income_pct ?? 0)
               : key === "stocks"
-                ? allocation.stocks_pct
-                : allocation.crypto_pct;
+                ? (allocation.stocks_pct ?? 0)
+                : (allocation.crypto_pct ?? 0);
           const tgt = target[key] || 0;
-          const diff = pct - tgt;
+          const diff = Number(pct) - Number(tgt);
 
           return (
             <div key={key} className="flex items-center gap-3">

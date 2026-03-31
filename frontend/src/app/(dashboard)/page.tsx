@@ -451,10 +451,10 @@ export default function DashboardPage() {
                 {(["fixed_income", "stocks", "crypto"] as const).map((key) => {
                   const pct =
                     key === "fixed_income"
-                      ? data.allocation.fixed_income_pct
+                      ? (data.allocation.fixed_income_pct ?? 0)
                       : key === "stocks"
-                        ? data.allocation.stocks_pct
-                        : data.allocation.crypto_pct;
+                        ? (data.allocation.stocks_pct ?? 0)
+                        : (data.allocation.crypto_pct ?? 0);
                   const tgt = data.target_allocation[key] ?? 0;
 
                   return (
@@ -470,7 +470,7 @@ export default function DashboardPage() {
                         className="tabular-nums font-semibold"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {pct.toFixed(1)}%
+                        {Number(pct).toFixed(1)}%
                       </span>
                       <span
                         className="text-xs tabular-nums"

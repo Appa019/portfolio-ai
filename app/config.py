@@ -29,7 +29,11 @@ class Settings(BaseSettings):
     target_crypto: float = 0.25
     lockup_days: int = 31
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
 
 settings = Settings()

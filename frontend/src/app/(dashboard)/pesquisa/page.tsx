@@ -250,8 +250,8 @@ function AnalysisCard({
                   className="text-sm font-bold tabular-nums"
                   style={{ color: sentiment.color }}
                 >
-                  {analysis.sentiment_score > 0 ? "+" : ""}
-                  {analysis.sentiment_score.toFixed(2)}
+                  {(analysis.sentiment_score ?? 0) > 0 ? "+" : ""}
+                  {(analysis.sentiment_score ?? 0).toFixed(2)}
                 </span>
                 <span
                   className="text-[10px] uppercase tracking-wider"
