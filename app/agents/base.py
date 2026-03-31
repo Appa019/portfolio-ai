@@ -280,9 +280,8 @@ class BaseAgent(ABC):
 
             session.end_conversation()
 
-            # Merge: final round output is the primary, all rounds stored
+            # Final round output is the primary result
             final_output = round_outputs[-1]["output"] if round_outputs else {}
-            final_output["_round_outputs"] = round_outputs
             duration = int((time.monotonic() - start) * 1000)
 
             result = AgentResult(
