@@ -20,6 +20,15 @@ class DeepResearchB3Agent(BaseAgent):
     def max_rounds(self) -> int:
         return 3
 
+    def get_session_key(self, context: dict[str, Any]) -> str:
+        """Use a key based on the candidate tickers for persistent chat."""
+        b3_result = context.get("agent_results", {}).get("b3_screener", {})
+        tickers = [c.get("ticker", "") for c in b3_result.get("candidatos", [])]
+        if tickers:
+            key = "_".join(sorted(tickers[:5]))
+            return f"deep_research_b3:{key}"
+        return "deep_research_b3"
+
     def build_prompt(self, context: dict[str, Any]) -> str:
         b3_result = context.get("agent_results", {}).get("b3_screener", {})
         candidates = b3_result.get("candidatos", [])

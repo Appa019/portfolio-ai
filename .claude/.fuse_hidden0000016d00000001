@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(git init:*)",
+      "Bash(source:*)",
+      "Bash(pnpm create:*)",
+      "Bash(cd frontend:*)",
+      "Bash(pnpm build:*)",
+      "Bash(cd:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(grep:*)",
+      "Bash(npx tsc:*)",
+      "Bash(wc -l \"/media/pedropestana/Disco Extra/linux_home/codigos_python/investimentos_manual/frontend/src/app/\\(dashboard\\)/page.tsx\")",
+      "Bash(wc -l \"/media/pedropestana/Disco Extra/linux_home/codigos_python/investimentos_manual/frontend/src/app/\\(dashboard\\)/pesquisa/page.tsx\")",
+      "Bash(wc -l \"/media/pedropestana/Disco Extra/linux_home/codigos_python/investimentos_manual/frontend/src/app/\\(dashboard\\)/aporte/page.tsx\")",
+      "Bash(wc -l \"/media/pedropestana/Disco Extra/linux_home/codigos_python/investimentos_manual/frontend/src/app/\\(dashboard\\)/ativos/page.tsx\")",
+      "Bash(wc -l \"/media/pedropestana/Disco Extra/linux_home/codigos_python/investimentos_manual/frontend/src/app/\\(dashboard\\)/configuracoes/page.tsx\")",
+      "WebFetch(domain:api.telegram.org)",
+      "Bash(gh auth:*)",
+      "Bash(/home/pedropestana/codigos_python/investimentos_manual/.venv/bin/python3 -c \"from dotenv import load_dotenv; print\\('ok'\\)\" 2>&1)",
+      "Bash(pip3 install:*)",
+      "Bash(node:*)",
+      "Bash(cloudflared --version)",
+      "Bash(dpkg --print-architecture)",
+      "Bash(sudo -S apt-get update -qq)",
+      "Bash(sudo -S apt-get install -y curl)",
+      "Bash(sudo -S curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb)",
+      "Bash(sudo -S dpkg -i cloudflared.deb)",
+      "Bash(chmod:*)",
+      "Bash(kill 147755)",
+      "Bash(pkill -f \"cloudflared tunnel\")",
+      "WebFetch(domain:baltimore-energy-promise-unlike.trycloudflare.com)",
+      "Bash(cat:*)"
+    ],
+    "deny": []
+  }
+}

@@ -19,11 +19,7 @@ async def get_allocation_targets() -> dict[str, Any]:
     """Get current allocation targets."""
     db = get_supabase()
     result = (
-        db.table("user_settings")
-        .select("value")
-        .eq("key", "allocation_targets")
-        .single()
-        .execute()
+        db.table("user_settings").select("value").eq("key", "allocation_targets").single().execute()
     )
     if not result.data:
         return {"fixed_income": 35, "stocks": 40, "crypto": 25}

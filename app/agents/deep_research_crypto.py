@@ -20,6 +20,15 @@ class DeepResearchCryptoAgent(BaseAgent):
     def max_rounds(self) -> int:
         return 3
 
+    def get_session_key(self, context: dict[str, Any]) -> str:
+        """Use a key based on the candidate tickers for persistent chat."""
+        crypto_result = context.get("agent_results", {}).get("crypto_screener", {})
+        tickers = [c.get("ticker", "") for c in crypto_result.get("candidatos", [])]
+        if tickers:
+            key = "_".join(sorted(tickers[:5]))
+            return f"deep_research_crypto:{key}"
+        return "deep_research_crypto"
+
     def build_prompt(self, context: dict[str, Any]) -> str:
         crypto_result = context.get("agent_results", {}).get("crypto_screener", {})
         candidates = crypto_result.get("candidatos", [])

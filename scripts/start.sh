@@ -15,9 +15,9 @@ echo "  ║     PortfolioAI — Ultra Research     ║"
 echo "  ╚══════════════════════════════════════╝"
 echo ""
 
-# Activate venv
+# Activate venv (prefer home disk for executable permissions)
 VENV_DIR=""
-for VENV_PATH in "$PROJECT_DIR/.venv" "$HOME/codigos_python/investimentos_manual/.venv"; do
+for VENV_PATH in "$HOME/portfolioai-venv" "$PROJECT_DIR/.venv" "$HOME/codigos_python/investimentos_manual/.venv"; do
     if [ -f "$VENV_PATH/bin/activate" ]; then
         source "$VENV_PATH/bin/activate"
         VENV_DIR="$VENV_PATH"
@@ -27,8 +27,8 @@ for VENV_PATH in "$PROJECT_DIR/.venv" "$HOME/codigos_python/investimentos_manual
 done
 
 if [ -z "$VENV_DIR" ]; then
-    echo "  ERROR: No .venv found. Create one first:"
-    echo "    python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt"
+    echo "  ERROR: No venv found. Create one first:"
+    echo "    python3 -m venv ~/portfolioai-venv && source ~/portfolioai-venv/bin/activate && pip install -r requirements.txt"
     exit 1
 fi
 

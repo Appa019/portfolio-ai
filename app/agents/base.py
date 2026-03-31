@@ -43,6 +43,14 @@ class BaseAgent(ABC):
         """Maximum conversation rounds. Override for multi-turn agents."""
         return 1
 
+    def get_session_key(self, context: dict[str, Any]) -> str:
+        """Return the persistent conversation key for this agent.
+
+        Override to create topic-specific conversations.
+        Default: one conversation per agent name.
+        """
+        return self.name
+
     @abstractmethod
     def build_prompt(self, context: dict[str, Any]) -> str:
         """Build the prompt to send to Claude."""
@@ -73,6 +81,10 @@ class BaseAgent(ABC):
             return await self._run_multi_turn(session, context, contribution_id, on_round_complete)
         return await self._run_single(session, context, contribution_id)
 
+    def _resolve_session_key(self, context: dict[str, Any]) -> str:
+        """Get the session key for persistent conversation lookup."""
+        return self.get_session_key(context)
+
     async def _run_single(
         self,
         session: ClaudeSession,
@@ -88,11 +100,13 @@ class BaseAgent(ABC):
 
         try:
             prompt = self.build_prompt(context)
-            logger.info("agent_running", agent=self.name, order=self.order)
+            sk = self._resolve_session_key(context)
+            logger.info("agent_running", agent=self.name, order=self.order, session_key=sk)
 
             raw_response = await session.send_prompt(
                 prompt,
                 research_mode=self.use_research,
+                session_key=sk,
             )
             session.end_conversation()
 
@@ -158,17 +172,20 @@ class BaseAgent(ABC):
             run_id = await self._log_start(contribution_id)
 
         try:
-            # Round 1: initial prompt (opens new conversation)
+            # Round 1: initial prompt (opens or resumes conversation)
             prompt = self.build_prompt(context)
+            sk = self._resolve_session_key(context)
             logger.info(
                 "agent_multi_turn_start",
                 agent=self.name,
                 total_rounds=self.max_rounds,
+                session_key=sk,
             )
 
             raw_response = await session.send_prompt(
                 prompt,
                 research_mode=self.use_research,
+                session_key=sk,
             )
 
             if not raw_response:
