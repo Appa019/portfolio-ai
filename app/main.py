@@ -32,6 +32,7 @@ app = FastAPI(
 
 allowed_origins = [
     "http://localhost:3000",
+    "https://portfolio-ai-amber.vercel.app",
 ]
 if settings.frontend_url and settings.frontend_url not in allowed_origins:
     allowed_origins.append(settings.frontend_url)
@@ -39,6 +40,7 @@ if settings.frontend_url and settings.frontend_url not in allowed_origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.trycloudflare\.com",
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
