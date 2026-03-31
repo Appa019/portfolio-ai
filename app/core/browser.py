@@ -366,21 +366,50 @@ class ClaudeSession:
         return None
 
     async def _enable_research_mode(self) -> None:
-        """Try to enable search/research mode if available.
+        """Enable 'Pesquisa' (Search) mode via model selector dropdown."""
+        if not self._page:
+            return
 
-        The Claude UI changes frequently. If the toggle is not found,
-        we continue without it — Claude still performs web searches
-        when asked in the prompt.
-        """
-        toggle = await self._find_element(
-            [selectors.RESEARCH_TOGGLE, selectors.RESEARCH_TOGGLE_FALLBACK]
-        )
-        if toggle:
-            await toggle.click()
-            await asyncio.sleep(1)
-            logger.info("research_mode_enabled")
-        else:
-            logger.info("research_toggle_not_found_continuing")
+        try:
+            # Open model selector dropdown
+            dropdown = await self._page.query_selector(selectors.MODEL_SELECTOR)
+            if not dropdown:
+                logger.info("model_selector_not_found_skipping_research")
+                return
+
+            await dropdown.click()
+            await asyncio.sleep(1.5)
+
+            # Find Pesquisa checkbox
+            pesquisa = await self._page.query_selector(
+                '[role="menuitemcheckbox"]:has-text("Pesquisa")'
+            )
+            if not pesquisa:
+                pesquisa = await self._page.query_selector(
+                    '[role="menuitemcheckbox"]:has-text("Search")'
+                )
+
+            if pesquisa:
+                checked = await pesquisa.get_attribute("aria-checked")
+                if checked != "true":
+                    await pesquisa.click()
+                    await asyncio.sleep(1)
+                    logger.info("research_mode_enabled")
+                else:
+                    logger.info("research_mode_already_enabled")
+            else:
+                logger.info("research_checkbox_not_found")
+
+            # Close dropdown
+            await self._page.keyboard.press("Escape")
+            await asyncio.sleep(0.5)
+
+        except Exception:
+            logger.warning("research_mode_enable_failed", exc_info=True)
+            try:
+                await self._page.keyboard.press("Escape")
+            except Exception:
+                pass
 
     async def _type_prompt(self, text: str) -> None:
         """Type the prompt into the chat input."""

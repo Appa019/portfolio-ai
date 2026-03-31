@@ -25,9 +25,10 @@ COPY_BUTTON_FALLBACK = 'button[aria-label="Copiar"]'
 # New chat
 NEW_CHAT_BUTTON = 'a[href="/new"]'
 
-# Research/search mode — no longer a separate toggle in current UI
-RESEARCH_TOGGLE = 'button[aria-label="Search"]'
-RESEARCH_TOGGLE_FALLBACK = 'button[aria-label="Pesquisar"]'
+# Research/search mode — checkbox in model selector dropdown
+# The "Pesquisa" toggle is inside the model selector dropdown menu
+RESEARCH_TOGGLE = '[role="menuitemcheckbox"]:has(div:text("Pesquisa"))'
+RESEARCH_TOGGLE_FALLBACK = '[role="menuitemcheckbox"]:has(div:text("Search"))'
 
 # Login-related
 LOGIN_BUTTON = '[data-testid="login-button"]'
