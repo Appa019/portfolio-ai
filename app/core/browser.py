@@ -38,6 +38,7 @@ class ClaudeSession:
         self._semaphore = asyncio.Semaphore(1)
         self._conversation_active: bool = False
         self._current_session_key: str | None = None
+        self.last_was_resumed: bool = False
 
     async def initialize(self) -> None:
         """Launch browser and load storage state if available."""
@@ -153,6 +154,7 @@ class ClaudeSession:
             self._last_request_time = asyncio.get_event_loop().time()
             self._conversation_active = True
             self._current_session_key = session_key
+            self.last_was_resumed = resumed
 
             # Save/update conversation URL in Supabase
             if session_key and self._page:
@@ -403,31 +405,61 @@ class ClaudeSession:
             await self._page.keyboard.press("Enter")
 
     async def _wait_and_extract_response(self) -> str:
-        """Wait for the response to complete and extract text."""
+        """Wait for the response to FULLY complete, then extract text.
+
+        Strategy:
+        1. Wait for streaming to start (data-is-streaming="true" appears)
+        2. Wait for streaming to end (data-is-streaming="false")
+        3. Extra wait to ensure the response is fully rendered
+        4. Extract the last assistant message text
+        """
         if not self._page:
             return ""
 
-        await asyncio.sleep(5)
-
-        # Wait for copy button (EN or PT) or streaming complete
-        copy_selector = f"{selectors.COPY_BUTTON}, {selectors.COPY_BUTTON_FALLBACK}"
+        # Step 1: Wait for streaming to START (response begins)
+        logger.info("waiting_for_response_start")
         try:
             await self._page.wait_for_selector(
-                copy_selector,
+                selectors.RESPONSE_STREAMING,
+                timeout=30000,
+            )
+            logger.info("response_streaming_started")
+        except Exception:
+            logger.info("streaming_indicator_not_found_checking_complete")
+
+        # Step 2: Wait for streaming to FINISH
+        logger.info("waiting_for_response_complete")
+        try:
+            await self._page.wait_for_selector(
+                selectors.RESPONSE_COMPLETE,
                 timeout=self.RESPONSE_TIMEOUT_MS,
             )
+            logger.info("response_streaming_finished")
         except Exception:
+            # Fallback: wait for copy button
+            copy_selector = f"{selectors.COPY_BUTTON}, {selectors.COPY_BUTTON_FALLBACK}"
             try:
                 await self._page.wait_for_selector(
-                    selectors.RESPONSE_COMPLETE,
+                    copy_selector,
                     timeout=60000,
                 )
+                logger.info("copy_button_appeared")
             except Exception:
-                logger.warning("response_wait_timeout_fallback")
-                await asyncio.sleep(15)
+                logger.warning("response_wait_timeout_using_fallback")
+                await asyncio.sleep(20)
 
-        await asyncio.sleep(3)
-        return await self._extract_last_response()
+        # Step 3: Extra wait for full render
+        await asyncio.sleep(5)
+
+        # Step 4: Extract and verify
+        response = await self._extract_last_response()
+
+        if not response or len(response.strip()) < 10:
+            logger.warning("response_too_short_retrying", length=len(response))
+            await asyncio.sleep(10)
+            response = await self._extract_last_response()
+
+        return response
 
     async def _extract_last_response(self) -> str:
         """Extract text from the last assistant message."""

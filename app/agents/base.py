@@ -53,8 +53,23 @@ class BaseAgent(ABC):
 
     @abstractmethod
     def build_prompt(self, context: dict[str, Any]) -> str:
-        """Build the prompt to send to Claude."""
+        """Build the initial prompt for a NEW conversation."""
         ...
+
+    def build_resume_prompt(self, context: dict[str, Any]) -> str:
+        """Build prompt for RESUMING an existing conversation.
+
+        When the agent resumes a persistent conversation, this prompt
+        is sent instead of the initial one. Override for custom behavior.
+        Default: adds a context update prefix to the regular prompt.
+        """
+        base = self.build_prompt(context)
+        return (
+            "[ATUALIZAÇÃO DE CONTEXTO — Esta é uma continuação da nossa conversa anterior. "
+            "Use todo o histórico desta conversa como referência. "
+            "Aqui estão os dados atualizados:]\n\n"
+            f"{base}"
+        )
 
     def build_followup_prompt(
         self,
@@ -85,6 +100,20 @@ class BaseAgent(ABC):
         """Get the session key for persistent conversation lookup."""
         return self.get_session_key(context)
 
+    async def _check_session_exists(self, session_key: str) -> bool:
+        """Check if a persistent conversation exists for this session key."""
+        try:
+            db = get_supabase()
+            result = (
+                db.table("conversation_sessions")
+                .select("id")
+                .eq("session_key", session_key)
+                .execute()
+            )
+            return bool(result.data)
+        except Exception:
+            return False
+
     async def _run_single(
         self,
         session: ClaudeSession,
@@ -99,9 +128,18 @@ class BaseAgent(ABC):
             run_id = await self._log_start(contribution_id)
 
         try:
-            prompt = self.build_prompt(context)
             sk = self._resolve_session_key(context)
             logger.info("agent_running", agent=self.name, order=self.order, session_key=sk)
+
+            # Check if conversation will be resumed (peek at Supabase)
+            will_resume = await self._check_session_exists(sk)
+
+            # Choose the right prompt
+            if will_resume:
+                prompt = self.build_resume_prompt(context)
+                logger.info("using_resume_prompt", agent=self.name)
+            else:
+                prompt = self.build_prompt(context)
 
             raw_response = await session.send_prompt(
                 prompt,
@@ -173,13 +211,21 @@ class BaseAgent(ABC):
 
         try:
             # Round 1: initial prompt (opens or resumes conversation)
-            prompt = self.build_prompt(context)
             sk = self._resolve_session_key(context)
+            will_resume = await self._check_session_exists(sk)
+
+            if will_resume:
+                prompt = self.build_resume_prompt(context)
+                logger.info("multi_turn_using_resume_prompt", agent=self.name)
+            else:
+                prompt = self.build_prompt(context)
+
             logger.info(
                 "agent_multi_turn_start",
                 agent=self.name,
                 total_rounds=self.max_rounds,
                 session_key=sk,
+                resumed=will_resume,
             )
 
             raw_response = await session.send_prompt(
