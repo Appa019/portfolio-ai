@@ -10,58 +10,35 @@ import {
   XCircle,
   Server,
   Sliders,
+  Save,
+  AlertTriangle,
 } from "lucide-react";
 import {
   fetchSchedulerJobs,
+  fetchAllocationTargets,
+  saveAllocationTargets,
   triggerJob,
   API_BASE,
   type SchedulerJob,
+  type AllocationTargets,
 } from "@/lib/api";
 
-// Allocation targets stored in localStorage
-interface AllocationTargets {
-  fixed_income: number;
-  stocks: number;
-  crypto: number;
-}
-
-const STORAGE_KEY = "portfolio_allocation_targets";
-const DEFAULT_TARGETS: AllocationTargets = {
-  fixed_income: 40,
-  stocks: 40,
-  crypto: 20,
-};
-
-function loadTargets(): AllocationTargets {
-  if (typeof window === "undefined") return DEFAULT_TARGETS;
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as AllocationTargets;
-      const sum = parsed.fixed_income + parsed.stocks + parsed.crypto;
-      if (Math.abs(sum - 100) < 0.5) return parsed;
-    }
-  } catch {
-    // Fall through to default
-  }
-  return DEFAULT_TARGETS;
-}
-
-function saveTargets(targets: AllocationTargets) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(targets));
-}
-
 function ConfiguracoesPage() {
-  // Allocation state
-  const [targets, setTargets] = useState<AllocationTargets>(DEFAULT_TARGETS);
-  const [targetsSaved, setTargetsSaved] = useState(false);
+  const [targets, setTargets] = useState<AllocationTargets>({
+    fixed_income: 35,
+    stocks: 40,
+    crypto: 25,
+  });
+  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saved" | "error"
+  >("idle");
+  const [loadingTargets, setLoadingTargets] = useState(true);
 
-  // Scheduler state
   const [jobs, setJobs] = useState<SchedulerJob[]>([]);
   const [jobsLoading, setJobsLoading] = useState(true);
   const [triggeringJob, setTriggeringJob] = useState<string | null>(null);
 
-  // Health state
   const [healthStatus, setHealthStatus] = useState<
     "loading" | "healthy" | "unhealthy"
   >("loading");
@@ -69,16 +46,17 @@ function ConfiguracoesPage() {
     null
   );
 
-  // Load allocation targets from localStorage
+  // Load targets from Supabase via backend
   useEffect(() => {
-    setTargets(loadTargets());
+    fetchAllocationTargets()
+      .then((data) => setTargets(data))
+      .catch(() => {})
+      .finally(() => setLoadingTargets(false));
   }, []);
 
-  // Fetch scheduler jobs
   const loadJobs = useCallback(async () => {
     try {
-      const data = await fetchSchedulerJobs();
-      setJobs(data);
+      setJobs(await fetchSchedulerJobs());
     } catch {
       setJobs([]);
     } finally {
@@ -86,7 +64,6 @@ function ConfiguracoesPage() {
     }
   }, []);
 
-  // Health check
   const checkHealth = useCallback(async () => {
     setHealthStatus("loading");
     try {
@@ -94,8 +71,7 @@ function ConfiguracoesPage() {
         signal: AbortSignal.timeout(5000),
       });
       if (res.ok) {
-        const data = await res.json();
-        setHealthData(data as Record<string, unknown>);
+        setHealthData((await res.json()) as Record<string, unknown>);
         setHealthStatus("healthy");
       } else {
         setHealthStatus("unhealthy");
@@ -110,50 +86,22 @@ function ConfiguracoesPage() {
     checkHealth();
   }, [loadJobs, checkHealth]);
 
-  // Allocation handlers
-  function handleSliderChange(
-    field: keyof AllocationTargets,
-    value: number
-  ) {
-    setTargetsSaved(false);
-    setTargets((prev) => {
-      const updated = { ...prev, [field]: value };
-      const otherFields = (
-        Object.keys(prev) as Array<keyof AllocationTargets>
-      ).filter((k) => k !== field);
-      const remaining = 100 - value;
-      const otherTotal = otherFields.reduce((sum, k) => sum + prev[k], 0);
+  const total = targets.fixed_income + targets.stocks + targets.crypto;
+  const isValid = Math.abs(total - 100) < 0.5;
 
-      if (otherTotal === 0) {
-        const each = Math.round(remaining / otherFields.length);
-        otherFields.forEach((k, i) => {
-          updated[k] =
-            i === otherFields.length - 1
-              ? remaining - each * (otherFields.length - 1)
-              : each;
-        });
-      } else {
-        let distributed = 0;
-        otherFields.forEach((k, i) => {
-          if (i === otherFields.length - 1) {
-            updated[k] = Math.max(0, remaining - distributed);
-          } else {
-            const proportion = prev[k] / otherTotal;
-            const share = Math.round(remaining * proportion);
-            updated[k] = Math.max(0, share);
-            distributed += updated[k];
-          }
-        });
-      }
-
-      return updated;
-    });
-  }
-
-  function handleSaveTargets() {
-    saveTargets(targets);
-    setTargetsSaved(true);
-    setTimeout(() => setTargetsSaved(false), 2000);
+  async function handleSave() {
+    if (!isValid) return;
+    setSaving(true);
+    setSaveStatus("idle");
+    try {
+      await saveAllocationTargets(targets);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } catch {
+      setSaveStatus("error");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleTriggerJob(jobId: string) {
@@ -162,17 +110,14 @@ function ConfiguracoesPage() {
       await triggerJob(jobId);
       await loadJobs();
     } catch {
-      // Silent fail
+      // silent
     } finally {
       setTriggeringJob(null);
     }
   }
 
-  const allocationSum = targets.fixed_income + targets.stocks + targets.crypto;
-
   return (
     <div className="space-y-12">
-      {/* Header */}
       <div>
         <h2
           className="font-serif text-4xl tracking-tight"
@@ -199,7 +144,7 @@ function ConfiguracoesPage() {
           border: "1px solid var(--border)",
         }}
       >
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-8">
           <Sliders size={18} style={{ color: "var(--accent)" }} />
           <h3
             className="font-serif text-xl"
@@ -209,91 +154,138 @@ function ConfiguracoesPage() {
           </h3>
         </div>
 
-        <div className="max-w-xl space-y-6">
-          <AllocationSlider
-            label="Renda Fixa"
-            value={targets.fixed_income}
-            onChange={(v) => handleSliderChange("fixed_income", v)}
-            color="var(--accent)"
+        {loadingTargets ? (
+          <div
+            className="animate-pulse h-40 rounded"
+            style={{ background: "var(--bg-secondary)" }}
           />
-          <AllocationSlider
-            label="Acoes"
-            value={targets.stocks}
-            onChange={(v) => handleSliderChange("stocks", v)}
-            color="var(--success)"
-          />
-          <AllocationSlider
-            label="Crypto"
-            value={targets.crypto}
-            onChange={(v) => handleSliderChange("crypto", v)}
-            color="var(--warning)"
-          />
+        ) : (
+          <div className="max-w-xl space-y-8">
+            {/* Independent sliders */}
+            <SliderField
+              label="Renda Fixa"
+              value={targets.fixed_income}
+              onChange={(v) =>
+                setTargets((prev) => ({ ...prev, fixed_income: v }))
+              }
+              color="var(--accent)"
+            />
+            <SliderField
+              label="Acoes"
+              value={targets.stocks}
+              onChange={(v) =>
+                setTargets((prev) => ({ ...prev, stocks: v }))
+              }
+              color="var(--success)"
+            />
+            <SliderField
+              label="Crypto"
+              value={targets.crypto}
+              onChange={(v) =>
+                setTargets((prev) => ({ ...prev, crypto: v }))
+              }
+              color="var(--warning)"
+            />
 
-          {/* Visual distribution bar */}
-          <div className="pt-2">
-            <div
-              className="h-3 rounded-full overflow-hidden flex"
-              style={{ background: "var(--bg-secondary)" }}
-            >
+            {/* Visual bar */}
+            <div>
               <div
-                className="h-full transition-all duration-300"
-                style={{
-                  width: `${targets.fixed_income}%`,
-                  background: "var(--accent)",
-                }}
-              />
-              <div
-                className="h-full transition-all duration-300"
-                style={{
-                  width: `${targets.stocks}%`,
-                  background: "var(--success)",
-                }}
-              />
-              <div
-                className="h-full transition-all duration-300"
-                style={{
-                  width: `${targets.crypto}%`,
-                  background: "var(--warning)",
-                }}
-              />
-            </div>
-            <div className="flex items-center justify-between mt-2">
-              <div className="flex items-center gap-4">
-                <LegendDot color="var(--accent)" label="RF" />
-                <LegendDot color="var(--success)" label="Acoes" />
-                <LegendDot color="var(--warning)" label="Crypto" />
-              </div>
-              <span
-                className="font-sans text-xs tabular-nums font-medium"
-                style={{
-                  color:
-                    Math.abs(allocationSum - 100) < 0.5
-                      ? "var(--text-muted)"
-                      : "var(--danger)",
-                }}
+                className="h-3 rounded-full overflow-hidden flex"
+                style={{ background: "var(--bg-secondary)" }}
               >
-                Total: {allocationSum}%
-              </span>
+                <div
+                  className="h-full transition-all duration-200"
+                  style={{
+                    width: `${targets.fixed_income}%`,
+                    background: "var(--accent)",
+                  }}
+                />
+                <div
+                  className="h-full transition-all duration-200"
+                  style={{
+                    width: `${targets.stocks}%`,
+                    background: "var(--success)",
+                  }}
+                />
+                <div
+                  className="h-full transition-all duration-200"
+                  style={{
+                    width: `${targets.crypto}%`,
+                    background: "var(--warning)",
+                  }}
+                />
+              </div>
+
+              {/* Total indicator */}
+              <div className="flex items-center justify-between mt-3">
+                <div className="flex items-center gap-4">
+                  <LegendDot color="var(--accent)" label="RF" />
+                  <LegendDot color="var(--success)" label="Acoes" />
+                  <LegendDot color="var(--warning)" label="Crypto" />
+                </div>
+                <div className="flex items-center gap-2">
+                  {!isValid && (
+                    <AlertTriangle
+                      size={14}
+                      style={{ color: "var(--danger)" }}
+                    />
+                  )}
+                  <span
+                    className="font-sans text-sm font-semibold tabular-nums"
+                    style={{
+                      color: isValid
+                        ? "var(--success)"
+                        : "var(--danger)",
+                    }}
+                  >
+                    {total}%
+                  </span>
+                  <span
+                    className="font-sans text-xs"
+                    style={{
+                      color: isValid
+                        ? "var(--text-muted)"
+                        : "var(--danger)",
+                    }}
+                  >
+                    {isValid ? "OK" : "deve ser 100%"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Save button */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={handleSave}
+                disabled={!isValid || saving}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-sans text-sm font-semibold transition-all disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                style={{ background: "var(--accent)", color: "white" }}
+              >
+                {saving ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : saveStatus === "saved" ? (
+                  <CheckCircle2 size={14} />
+                ) : (
+                  <Save size={14} />
+                )}
+                {saving
+                  ? "Salvando..."
+                  : saveStatus === "saved"
+                    ? "Salvo!"
+                    : "Salvar"}
+              </button>
+              {saveStatus === "error" && (
+                <span
+                  className="font-sans text-xs"
+                  style={{ color: "var(--danger)" }}
+                >
+                  Erro ao salvar. Backend online?
+                </span>
+              )}
             </div>
           </div>
-
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              onClick={handleSaveTargets}
-              disabled={Math.abs(allocationSum - 100) > 0.5}
-              className="px-5 py-2.5 rounded-lg font-sans text-sm font-semibold transition-opacity disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
-              style={{ background: "var(--accent)", color: "white" }}
-            >
-              {targetsSaved ? "Salvo" : "Salvar"}
-            </button>
-            <span
-              className="font-sans text-xs"
-              style={{ color: "var(--text-muted)" }}
-            >
-              Salvar localmente
-            </span>
-          </div>
-        </div>
+        )}
       </motion.section>
 
       {/* Scheduler */}
@@ -352,7 +344,7 @@ function ConfiguracoesPage() {
                       className="font-sans text-xs"
                       style={{ color: "var(--text-muted)" }}
                     >
-                      Trigger: {job.trigger}
+                      {job.trigger}
                     </span>
                     {job.next_run && (
                       <span
@@ -414,7 +406,6 @@ function ConfiguracoesPage() {
         </div>
 
         <div className="space-y-4 max-w-lg">
-          {/* Health status */}
           <div
             className="flex items-center justify-between p-4 rounded-lg"
             style={{
@@ -469,7 +460,6 @@ function ConfiguracoesPage() {
             </span>
           </div>
 
-          {/* Version */}
           <div
             className="flex items-center justify-between p-4 rounded-lg"
             style={{
@@ -487,35 +477,8 @@ function ConfiguracoesPage() {
               className="font-sans text-xs font-medium tabular-nums"
               style={{ color: "var(--text-muted)" }}
             >
-              {healthData?.version
-                ? String(healthData.version)
-                : "1.0.0"}
+              {healthData?.version ? String(healthData.version) : "—"}
             </span>
-          </div>
-
-          {/* API URL */}
-          <div
-            className="flex items-center justify-between p-4 rounded-lg"
-            style={{
-              background: "var(--bg-secondary)",
-              border: "1px solid var(--border)",
-            }}
-          >
-            <span
-              className="font-sans text-sm font-medium"
-              style={{ color: "var(--text-primary)" }}
-            >
-              API URL
-            </span>
-            <code
-              className="font-sans text-xs px-2 py-0.5 rounded"
-              style={{
-                background: "var(--bg-primary)",
-                color: "var(--text-muted)",
-              }}
-            >
-              {API_BASE}
-            </code>
           </div>
 
           <button
@@ -535,7 +498,7 @@ function ConfiguracoesPage() {
   );
 }
 
-function AllocationSlider({
+function SliderField({
   label,
   value,
   onChange,
@@ -557,12 +520,30 @@ function AllocationSlider({
         >
           {label}
         </label>
-        <span
-          className="font-sans text-sm font-semibold tabular-nums"
-          style={{ color }}
-        >
-          {value}%
-        </span>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={value}
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10);
+              if (!isNaN(v) && v >= 0 && v <= 100) onChange(v);
+            }}
+            className="w-14 text-right font-sans text-sm font-semibold tabular-nums rounded px-2 py-1"
+            style={{
+              color,
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border)",
+            }}
+          />
+          <span
+            className="font-sans text-sm"
+            style={{ color: "var(--text-muted)" }}
+          >
+            %
+          </span>
+        </div>
       </div>
       <input
         id={id}

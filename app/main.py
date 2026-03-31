@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.core.scheduler import scheduler, setup_scheduler
-from app.routers import contributions, portfolio, prices, reports, research, ws
+from app.routers import contributions, portfolio, prices, reports, research, settings, ws
 from app.routers import scheduler as scheduler_router
 
 logger = structlog.get_logger()
@@ -53,6 +53,7 @@ app.include_router(ws.router)
 app.include_router(scheduler_router.router)
 app.include_router(reports.router)
 app.include_router(research.router)
+app.include_router(settings.router)
 
 
 @app.get("/api/health")

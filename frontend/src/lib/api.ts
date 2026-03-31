@@ -117,6 +117,24 @@ export function fetchWeeklyReports() {
   return request<WeeklyReport[]>("/api/reports");
 }
 
+// Settings
+export function fetchAllocationTargets() {
+  return request<AllocationTargets>("/api/settings/allocation");
+}
+
+export function saveAllocationTargets(data: AllocationTargets) {
+  return request<AllocationTargets>("/api/settings/allocation", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export interface AllocationTargets {
+  fixed_income: number;
+  stocks: number;
+  crypto: number;
+}
+
 // Contributions list
 export function fetchContributions() {
   return request<Contribution[]>("/api/aporte");

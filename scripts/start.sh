@@ -16,12 +16,21 @@ echo "  ╚═══════════════════════
 echo ""
 
 # Activate venv
+VENV_DIR=""
 for VENV_PATH in "$PROJECT_DIR/.venv" "$HOME/codigos_python/investimentos_manual/.venv"; do
     if [ -f "$VENV_PATH/bin/activate" ]; then
         source "$VENV_PATH/bin/activate"
+        VENV_DIR="$VENV_PATH"
+        echo "  venv: $VENV_PATH"
         break
     fi
 done
+
+if [ -z "$VENV_DIR" ]; then
+    echo "  ERROR: No .venv found. Create one first:"
+    echo "    python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt"
+    exit 1
+fi
 
 # Kill any existing processes
 pkill -f "cloudflared tunnel" 2>/dev/null || true
@@ -83,5 +92,9 @@ echo "  ║  Press Ctrl+C to stop everything                 ║"
 echo "  ╚══════════════════════════════════════════════════╝"
 echo ""
 
-# Start backend (foreground)
-uvicorn app.main:app --reload --port 8000 --host 0.0.0.0
+# Start backend (foreground) — use full path as fallback
+UVICORN="$VENV_DIR/bin/uvicorn"
+if [ ! -f "$UVICORN" ]; then
+    UVICORN="$(which uvicorn 2>/dev/null || echo uvicorn)"
+fi
+"$UVICORN" app.main:app --reload --port 8000 --host 0.0.0.0
